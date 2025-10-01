@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ulepszony Efekt Matrix Magic z Kontrolkami</title>
+    <!-- Ładowanie Tailwind CSS dla stylizacji -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        /* Ustawienia globalne i import czcionki */
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Roboto Mono', monospace;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; 
+            min-height: 100vh;
+            background-color: #0A020F;
+        }
+
+        /* Stylizacja Canvas na tło */
+        #matrix-magic-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            display: block;
+        }
+        
+        /* Panel kontrolny z animacją chowania */
+        #control-panel {
+            transition: transform 0.5s ease-in-out;
+        }
+        #control-panel.is-hidden {
+            transform: translateX(calc(100% + 1rem)); /* Chowa panel poza ekran */
+        }
+        #toggle-panel-btn svg {
+            transition: transform 0.5s ease-in-out;
+        }
+        #control-panel.is-hidden #toggle-panel-btn svg {
+            transform: rotate(-180deg);
+        }
+
+        /* Ukrycie domyślnego wyglądu input range */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #2D0F4A;
+            border-radius: 5px;
+            outline: none;
+            opacity: 0.8;
+            transition: opacity .15s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #8A2BE2;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #8A2BE2;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <!-- Canvas, na którym będzie renderowany efekt kodu -->
+    <canvas id="matrix-magic-canvas"></canvas>
+
+    <!-- Panel Kontrolny (przesunięty na dół, do prawej) -->
+    <div id="control-panel" class="fixed bottom-4 right-4 p-4 md:p-6 bg-gray-900/80 backdrop-blur-md rounded-xl shadow-2xl z-10 w-full max-w-xs md:max-w-sm border border-purple-700/50">
+        
+        <!-- Przycisk do chowania panelu -->
+        <button id="toggle-panel-btn" class="absolute -top-5 -left-5 z-20 p-2 bg-purple-700 hover:bg-purple-600 rounded-full text-white shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+        </button>
+
+        <h2 class="text-xl font-bold mb-4 text-[#A0E6FF]">Ustawienia Symulacji</h2>
+        
+        <!-- Kontrola Prędkości (Speed) -->
+        <div class="mb-3">
+            <label for="speed-slider" class="block text-sm font-medium text-gray-300">Prędkość Animacji</label>
+            <input type="range" id="speed-slider" min="1" max="10" value="3" step="1" class="w-full">
+        </div>
+
+        <!-- Kontrola Gęstości (Density) -->
+        <div class="mb-3">
+            <label for="density-slider" class="block text-sm font-medium text-gray-300">Gęstość Strumieni</label>
+            <input type="range" id="density-slider" min="0.1" max="25" value="2" step="0.1" class="w-full">
+        </div>
+
+        <!-- Kontrola Długości Ogonów -->
+        <div class="mb-3">
+            <label for="fade-speed-slider" class="block text-sm font-medium text-gray-300">Długość Ogonów</label>
+            <input type="range" id="fade-speed-slider" min="1" max="20" value="5" step="1" class="w-full">
+        </div>
+
+        <!-- Kontrola Rozmiaru Czcionki (Font Size) -->
+        <div class="mb-3">
+            <label for="font-size-slider" class="block text-sm font-medium text-gray-300">Rozmiar Symboli</label>
+            <input type="range" id="font-size-slider" min="8" max="40" value="12" step="1" class="w-full">
+        </div>
+
+        <!-- NOWOŚĆ: Kontrola Intensywności Poświaty -->
+        <div class="mb-3">
+            <label for="glow-slider" class="block text-sm font-medium text-gray-300">Intensywność Poświaty</label>
+            <input type="range" id="glow-slider" min="0" max="50" value="15" step="1" class="w-full">
+        </div>
+
+        <!-- Kontrola Koloru Głównego -->
+        <div class="mb-3">
+            <label for="main-color-picker" class="block text-sm font-medium text-gray-300 mb-1">Kolor Główny</label>
+            <input type="color" id="main-color-picker" value="#8A2BE2" class="w-full h-8 rounded-md p-0 border-2 border-white/30 cursor-pointer">
+        </div>
+        
+        <!-- Kontrola Koloru Jasnego (Głowa Strumienia) -->
+        <div class="mb-4">
+            <label for="bright-color-picker" class="block text-sm font-medium text-gray-300 mb-1">Kolor Głowy Strumienia</label>
+            <input type="color" id="bright-color-picker" value="#A0E6FF" class="w-full h-8 rounded-md p-0 border-2 border-white/30 cursor-pointer">
+        </div>
+
+        <!-- Przełącznik Symboli -->
+        <div class="flex items-center justify-between">
+            <label for="magic-symbols-toggle" class="text-sm font-medium text-gray-300">Użyj Symboli Magicznych</label>
+            <input type="checkbox" id="magic-symbols-toggle" class="h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-pointer">
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', function () {
+            const canvas = document.getElementById('matrix-magic-canvas');
+            const ctx = canvas.getContext('2d');
+
+            if (!canvas) {
+                console.error('Błąd: Element canvas nie został znaleziony.');
+                return;
+            }
+
+            // --- ZESTAWY SYMBOLI ---
+            const ALPHANUMERIC_SYMBOLS = "アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン";
+            const MAGIC_SYMBOLS = "✧✦✡✨✙✚❖⚜⚚⚛⚕⚖☯⚙⚗⚡☄☽☾∀∂∃∅∇∈∉∋∏∑√∝∞∠∧∨∩∪∫≈≠≤≥⊂⊃⊆⊇⊕⊗⊥◊";
+
+            // --- KONFIGURACJA DYNAMICZNA (nowe wartości początkowe) ---
+            const config = {
+                speed: 3,           // Prędkość animacji [1-10] (wolniej)
+                density: 2,         // Gęstość strumieni w % [0.1-25]
+                fadeSpeed: 5,       // Długość ogonów [1-20]
+                fontSize: 12,       // Rozmiar czcionki w px (mniejsze)
+                glowIntensity: 15,  // NOWOŚĆ: Intensywność poświaty [0-50]
+                isMagicSymbols: false,
+                mainColor: '#8A2BE2',
+                brightColor: '#A0E6FF'
+            };
+
+            let columns = 0;
+            let drops = [];
+            let frameCounter = 0;
+
+            // Ustawia wymiary canvas i resetuje strumienie
+            function setupCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                
+                columns = Math.floor(canvas.width / config.fontSize);
+                drops = [];
+                for (let i = 0; i < columns; i++) {
+                    // Startuje każdą kolumnę na losowej wysokości
+                    drops[i] = Math.floor(Math.random() * canvas.height / config.fontSize);
+                }
+                
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+
+            // Główna pętla animacji
+            function draw() {
+                // Kontrola prędkości poprzez pomijanie klatek
+                // Mapa [1-10] -> [10-1] klatek do pominięcia
+                const frameSkip = 11 - config.speed;
+                if (++frameCounter < frameSkip) {
+                    requestAnimationFrame(draw);
+                    return;
+                }
+                frameCounter = 0;
+
+                // Tło z efektem smużenia (zanikania)
+                // Mapa [1-20] -> [0.1-0.005] przezroczystości
+                const opacity = (21 - config.fadeSpeed) / 200;
+                ctx.fillStyle = `rgba(10, 2, 15, ${opacity.toFixed(3)})`; 
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.font = `${config.fontSize}px 'Roboto Mono', monospace`;
+
+                const currentSymbols = config.isMagicSymbols ? MAGIC_SYMBOLS : ALPHANUMERIC_SYMBOLS;
+                
+                for (let i = 0; i < drops.length; i++) {
+                    const x = i * config.fontSize;
+                    const y = drops[i] * config.fontSize;
+
+                    const symbol = currentSymbols.charAt(Math.floor(Math.random() * currentSymbols.length));
+
+                    // Rysowanie "głowy" strumienia - zawsze jasny kolor z efektem poświaty
+                    ctx.fillStyle = config.brightColor;
+                    ctx.shadowColor = config.brightColor;
+                    ctx.shadowBlur = config.glowIntensity; // Zastosowanie nowej wartości
+                    ctx.fillText(symbol, x, y);
+                    
+                    // Resetowanie poświaty dla reszty klatek
+                    ctx.shadowBlur = 0;
+
+                    // Przesunięcie kropli w dół
+                    drops[i]++;
+
+                    // Resetowanie kropli po dojściu do końca ekranu
+                    // na podstawie ustawionej gęstości
+                    if (y > canvas.height && Math.random() < config.density / 100) {
+                        drops[i] = 0;
+                    }
+                }
+                
+                requestAnimationFrame(draw);
+            }
+
+            // --- OBSŁUGA KONTROLEK UŻYTKOWNIKA ---
+            function setupControls() {
+                const controlPanel = document.getElementById('control-panel');
+                const toggleBtn = document.getElementById('toggle-panel-btn');
+
+                toggleBtn.addEventListener('click', () => {
+                    controlPanel.classList.toggle('is-hidden');
+                });
+                
+                // Aktualizacja etykiet i konfiguracji na podstawie sliderów
+                const sliders = [
+                    { id: 'speed-slider', configKey: 'speed', label: "Prędkość Animacji" },
+                    { id: 'density-slider', configKey: 'density', label: "Gęstość Strumieni", unit: '%' },
+                    { id: 'fade-speed-slider', configKey: 'fadeSpeed', label: "Długość Ogonów" },
+                    { id: 'font-size-slider', configKey: 'fontSize', label: "Rozmiar Symboli", unit: 'px', action: setupCanvas },
+                    { id: 'glow-slider', configKey: 'glowIntensity', label: "Intensywność Poświaty" }
+                ];
+                
+                sliders.forEach(({ id, configKey, label, unit = '', action }) => {
+                    const slider = document.getElementById(id);
+                    const labelElement = document.querySelector(`label[for='${id}']`);
+                    
+                    // Funkcja do aktualizacji tekstu etykiety
+                    const updateLabelText = (value) => {
+                         if(labelElement) {
+                             labelElement.textContent = `${label} (${value.toFixed(unit === '%' ? 1 : 0)}${unit})`;
+                         }
+                    };
+
+                    // Ustawienie początkowego tekstu etykiety na podstawie wartości z config
+                    updateLabelText(config[configKey]);
+
+                    slider.addEventListener('input', (e) => {
+                        const value = parseFloat(e.target.value);
+                        config[configKey] = value;
+                        updateLabelText(value);
+                        if (action) action();
+                    });
+                });
+
+                document.getElementById('main-color-picker').addEventListener('input', (e) => {
+                    config.mainColor = e.target.value;
+                });
+                document.getElementById('bright-color-picker').addEventListener('input', (e) => {
+                    config.brightColor = e.target.value;
+                });
+                document.getElementById('magic-symbols-toggle').addEventListener('change', (e) => {
+                    config.isMagicSymbols = e.target.checked;
+                });
+            }
+
+            // --- INICJALIZACJA ---
+            setupCanvas();
+            window.addEventListener('resize', setupCanvas);
+            setupControls();
+            draw();
+
+            console.log('Ulepszony Matrix Magic zainicjowany z nowymi ustawieniami.');
+        });
+    </script>
+</body>
+</html>
